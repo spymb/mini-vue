@@ -1,23 +1,53 @@
+import { extend } from "../utils";
+
 class ReactiveEffect {
   private _fn: any;
-
-  constructor(fn, public scheduler?) {
+  public scheduler?: Function;
+  onStop?: () => void;
+  depsList = [];
+  active = true;
+  constructor(fn, scheduler) {
     this._fn = fn;
+    this.scheduler = scheduler;
   }
 
   run() {
     activeEffect = this;
     return this._fn();
   }
+
+  stop() {
+    if (this.active) {
+      cleanEffect(this);
+      if (this.onStop) {
+        this.onStop()
+      }
+      this.active = false
+    }
+  }
 }
 
 let activeEffect;
 export const effect = (fn, options: any = {}) => {
-  const scheduler = options.scheduler;
-  const _effect = new ReactiveEffect(fn, scheduler);
+  const _effect = new ReactiveEffect(fn, options.scheduler);
+  extend(_effect, options)
+
   _effect.run();
 
-  return _effect.run.bind(_effect);
+  const runner: any = _effect.run.bind(_effect);
+  runner.effect = _effect;
+
+  return runner;
+};
+
+const cleanEffect = (effect) => {
+  effect.depsList.forEach((deps) => {
+    deps.delete(effect);
+  });
+};
+
+export const stop = (runner) => {
+  runner.effect.stop();
 };
 
 const targetMap = new Map();
@@ -35,7 +65,10 @@ export const track = (target, key) => {
     depsMap.set(key, deps);
   }
 
+  if (!activeEffect) return
+
   deps.add(activeEffect);
+  activeEffect.depsList.push(deps);
 };
 
 export const trigger = (target, key) => {
