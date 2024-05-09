@@ -13,6 +13,21 @@ describe("effect", () => {
     expect(nextAge).toBe(11);
 
     user.age++;
-    expect(nextAge).toBe(12)
+    expect(nextAge).toBe(12);
+  });
+
+  it("should return runner when call effect", () => {
+    // effect(fn) -> 函数runner -> fn -> res
+
+    let n = 10;
+    const runner = effect(() => {
+      n++;
+      return "res";
+    });
+    expect(n).toBe(11);
+
+    const res = runner();
+    expect(n).toBe(12);
+    expect(res).toBe("res");
   });
 });
